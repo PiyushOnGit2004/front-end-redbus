@@ -27,6 +27,7 @@
   "scripts": {
     "predeploy": "npm run build",
     "deploy": "netlify deploy --prod",
+    "postinstall": "node patch-modules.js",
     "start": "NODE_OPTIONS=--openssl-legacy-provider react-scripts start",
     "build": "CI=false NODE_OPTIONS=--openssl-legacy-provider react-scripts build",
     "test": "react-scripts test",
