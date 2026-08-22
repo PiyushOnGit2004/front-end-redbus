@@ -3,7 +3,12 @@ const path = require("path");
 
 function walk(dir) {
   if (!fs.existsSync(dir)) return;
-  const entries = fs.readdirSync(dir, { withFileTypes: true });
+  let entries = [];
+  try {
+    entries = fs.readdirSync(dir, { withFileTypes: true });
+  } catch (e) {
+    return;
+  }
   for (const entry of entries) {
     const fullPath = path.join(dir, entry.name);
     if (entry.isDirectory()) {
@@ -11,18 +16,24 @@ function walk(dir) {
     } else if (entry.name === "package.json") {
       try {
         const content = fs.readFileSync(fullPath, "utf8");
-        if (
-          content.includes('"exports"') &&
-          (content.includes('"./": "./"') || fullPath.includes("postcss"))
-        ) {
-          const pkg = JSON.parse(content);
-          if (pkg.exports && typeof pkg.exports === "object") {
-            pkg.exports["./lib/tokenize"] = "./lib/tokenize.js";
-            pkg.exports["./lib/*"] = "./lib/*.js";
+        const pkg = JSON.parse(content);
+        let modified = false;
+
+        // Remove exports restriction from PostCSS and related packages
+        if (pkg.name === "postcss" && pkg.exports) {
+          delete pkg.exports;
+          modified = true;
+        } else if (pkg.exports && typeof pkg.exports === "object") {
+          if (pkg.exports["./"]) {
+            delete pkg.exports["./"];
             pkg.exports["./*"] = "./*";
-            fs.writeFileSync(fullPath, JSON.stringify(pkg, null, 2));
-            console.log("Patched exports in:", fullPath);
+            modified = true;
           }
+        }
+
+        if (modified) {
+          fs.writeFileSync(fullPath, JSON.stringify(pkg, null, 2));
+          console.log("Patched package.json:", fullPath);
         }
       } catch (e) {}
     }
